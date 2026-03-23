@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZANE - Portfolio</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+    @keyframes spin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    .bg-noise {
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: #09090b; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+    
+    body {
+      background-color: #09090b;
+      color: #fafafa;
+      cursor: none;
+    }
+    
+    .animate-fadeIn {
+      animation: fadeIn 0.5s ease-out forwards;
+    }
+
+    #custom-cursor-dot {
+      position: fixed;
+      top: 0; left: 0;
+      width: 8px; height: 8px;
+      background-color: white;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 100;
+      mix-blend-mode: difference;
+      transition: transform 0.1s ease-out;
+      transform: translate3d(-50%, -50%, 0);
+    }
+
+    #custom-cursor-circle {
+      position: fixed;
+      top: 0; left: 0;
+      width: 40px; height: 40px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background-color: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(4px);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 99;
+      transition: transform 0.3s ease-out, opacity 0.3s ease-out, width 0.3s, height 0.3s;
+      transform: translate3d(-50%, -50%, 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .cursor-hover #custom-cursor-circle {
+      transform: translate3d(-50%, -50%, 0) scale(1.8);
+      opacity: 0.8;
+    }
+    .cursor-hover #custom-cursor-dot {
+      transform: translate3d(-50%, -50%, 0) scale(0);
+    }
+
+    .ping-dot {
+      width: 4px; height: 4px;
+      background-color: white;
+      border-radius: 50%;
+      opacity: 0.5;
+      animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+      display: none;
+    }
+    .cursor-hover .ping-dot { display: block; }
+    
+    @keyframes ping {
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+  </style>
+</head>
+<body class="font-sans selection:bg-white/30 overflow-x-hidden">
+
+  <!-- Cursors -->
+  <div id="custom-cursor-dot"></div>
+  <div id="custom-cursor-circle"><div class="ping-dot"></div></div>
+
+  <!-- Background Canvas -->
+  <div class="fixed inset-0 pointer-events-none z-0 bg-zinc-950">
+    <canvas id="bg-canvas" class="absolute inset-0"></canvas>
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(9,9,11,0.85)_100%)]"></div>
+    <div class="absolute inset-0 bg-noise opacity-[0.04] mix-blend-overlay"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 md:px-12 py-6 mix-blend-difference pointer-events-none">
+    <div onclick="navigate('home')" class="interactable text-xl font-semibold tracking-tighter cursor-pointer pointer-events-auto flex flex-col">
+      <span>STUDIO<span class="text-zinc-500">.</span></span>
+    </div>
+    <div class="flex gap-8 text-sm font-medium tracking-wider text-zinc-300 pointer-events-auto">
+      <a onclick="navigate('about')" class="interactable hover:text-white transition-colors cursor-pointer flex flex-col items-end">
+        <span>关于</span>
+        <span class="text-[10px] text-zinc-500 uppercase mt-0.5">About</span>
+      </a>
+      <a onclick="navigate('exhibition')" class="interactable hover:text-white transition-colors cursor-pointer flex flex-col items-end">
+        <span>展览</span>
+        <span class="text-[10px] text-zinc-500 uppercase mt-0.5">Exhibition</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Views -->
+  <main class="relative" id="main-content">
+    <div id="view-home"></div>
+    <div id="view-about" class="hidden"></div>
+    <div id="view-projects" class="hidden"></div>
+    <div id="view-exhibition" class="hidden"></div>
+    <div id="view-exhibition-detail" class="hidden"></div>
+    <div id="view-detail" class="hidden"></div>
+  </main>
+
+  <!-- Footer -->
+  <footer id="global-footer" class="relative z-10 border-t border-white/10 mt-24 px-6 md:px-24 py-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-8 bg-black/50 backdrop-blur-md">
+    <div>
+      <h4 class="text-xl md:text-2xl font-medium text-zinc-100 mb-1">准备好开启新的项目了吗？</h4>
+      <p class="text-zinc-500 text-sm font-serif italic">Ready to start the next project?</p>
+    </div>
+    <div class="flex gap-4">
+      <button class="interactable w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors group">
+        <i data-lucide="mail" class="w-5 h-5 text-zinc-400 group-hover:text-white"></i>
+      </button>
+      <button class="interactable w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors group">
+        <i data-lucide="github" class="w-5 h-5 text-zinc-400 group-hover:text-white"></i>
+      </button>
+      <button class="interactable w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors group">
+        <i data-lucide="dribbble" class="w-5 h-5 text-zinc-400 group-hover:text-white"></i>
+      </button>
+    </div>
+  </footer>
+
+  <script>
+    // --- Data Definitions ---
+    const PROJECTS = [
+      {
+        id: 1,
+        title: "槟城人力车",
+        titleEn: "Penang Trishaw",
+        image: "https://i.postimg.cc/zX6XHCvF/30e23bc0-a5a8-47ca-99b9-6d7532cf1863.png",
+        category: "品牌体验设计",
+        categoryEn: "Brand Experience Design",
+        description: "通过系统的品牌重塑，将槟城人力车从单纯的交通工具转化为可信赖的城市文化向导。",
+        descriptionEn: "Transforming Penang trishaws from mere transport tools into trusted city cultural guides through systematic rebranding.",
+        gradient: "bg-gradient-to-tr from-zinc-800 via-zinc-900 to-black",
+        year: "2025",
+        role: "Brand Designer",
+        nature: "概念提案",
+        natureEn: "Concept Proposal",
+        content: "槟城是一个多民族共存的城市，人力车作为跨文化融合的“移动载体”，穿梭于城市之中。然而，当前的人力车缺乏统一的形象与叙事风格，价格不透明导致了公众信任的流失。本项目旨在通过品牌形象设计，解决用户的信任危机，让游客从“被动的消费者”转变为“文化体验的参与者”。",
+        contentEn: "Penang is a city of multi-ethnic coexistence, where the trishaw serves as a 'mobile carrier' for cross-cultural integration. However, current trishaws lack a unified image and narrative style, and opaque pricing has led to a loss of public trust. This project aims to solve the trust crisis through brand image design, transforming tourists from passive consumers into active participants in the cultural experience.",
+        detailedSections: [
+          {
+            type: "content-block",
+            title: "用户洞察与情感分析",
+            titleEn: "Audience & Emotional Insight",
+            text: "无论是外地游客还是本地学生，对人力车的初始期待常因不透明的价格和沟通障碍转化为防备与失望。解决核心不在于人力车本身，而在于重建信任感与安全感。",
+            textEn: "Both tourists and local students' initial expectations often turn into defensiveness due to opaque pricing and communication barriers. The core solution is rebuilding trust and security.",
+            images: ["https://i.postimg.cc/28M8LQyW/492391b7-89bc-41f1-b4a5-3d7926b3f2ac.png"],
+            customGrid: "grid-cols-1",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "视觉重塑：文化与艺术的融合",
+            titleEn: "Visual Reshaping: Fusion of Culture & Art",
+            text: "区别于马六甲人力车的“装饰堆砌”，槟城人力车强调文化与艺术的融合。车身面板融入娘惹瓷砖的色彩与图样，剥离塑料感元素，采用标志性的槟城窗饰与马来西亚国花。车篷内部绘制乔治市历史街区地图，为乘客提供仰视的文化视角。",
+            textEn: "Unlike the 'decorative piling' in Malacca, Penang Trishaw emphasizes the fusion of culture and art. The body incorporates Nyonya tile patterns, stripped of plastic elements, featuring iconic Penang window hangings and Malaysia's national flower. The interior canopy displays a hand-painted map of George Town.",
+            images: [
+              "https://i.postimg.cc/xThTNv8b/56ca6a85-5166-43b2-98dc-1914f3b03b1c.png",
+              "https://i.postimg.cc/Qd7NQFKb/b3375c28-c2d4-4b8b-8884-bc9ea82934c5.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "服务触点：透明化与体验设计",
+            titleEn: "Service Touchpoints: Transparency & Experience",
+            text: "解决信任危机的核心在于透明。我们设计了线上预订 App 以及极具收藏价值的实体纪念车票。车票采用胶片条的透明镂空设计，模拟老电影的模糊质感，且可拆卸作为挂饰；同时配合街头海报提升品牌曝光度。",
+            textEn: "The core of solving the trust crisis is transparency. We designed an online booking App and collectible physical tickets with a transparent film-strip design simulating the blurry texture of old movies. Street posters were also designed to increase brand visibility.",
+            images: [
+              "https://i.postimg.cc/65ypQjW2/c10dd6ca-6ca4-49e5-b480-065c6e70ea4c.png",
+              "https://i.postimg.cc/CLXLnG5m/c3e7abed-9ec1-464c-981f-173534723f33.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "身份识别与语言标识",
+            titleEn: "Identity Recognition & Language Indicators",
+            text: "为每位司机配备包含照片、编号、支付码与服务评价码的专属工牌。同时设计了直观的语言能力钥匙扣，游客可以直接看到司机掌握的语言，从而降低沟通壁垒，提升体验安全感。",
+            textEn: "Equipping each driver with an exclusive ID badge containing a photo, number, payment, and evaluation QR codes. We also designed intuitive language proficiency keychains, allowing tourists to see the driver's languages, reducing communication barriers and enhancing security.",
+            images: [
+              "https://i.postimg.cc/7YfZLsHZ/ce856724-e45c-45b2-8287-910f510ce290.png",
+              "https://i.postimg.cc/bNswvCyS/dab9cc2a-2fe5-4017-8f44-3f201ee6f2ab.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "文创周边与体验空间",
+            titleEn: "Souvenirs & Experience Space",
+            text: "将设计语言延展至 T恤、帆布袋、胶带等线下文创周边，并在专设的“The Trishaw House”集中展示。让游客带走的不仅仅是相片，而是蕴含槟城温度的专属文化印记。",
+            textEn: "Extending the design language to offline souvenirs like T-shirts, canvas bags, and tapes, displayed at 'The Trishaw House'. Ensuring tourists take away exclusive cultural imprints carrying the warmth of Penang, rather than just photos.",
+            images: [
+              "https://i.postimg.cc/hP6PQLvb/f291de2f-b2ff-4f64-9ef9-9f58bc62f8bc.png"
+            ],
+            customGrid: "grid-cols-1",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          }
+        ],
+        layoutClass: "md:col-span-12",
+        imageAspect: "aspect-[21/9]"
+      },
+      {
+        id: 4,
+        title: "电商海报设计",
+        titleEn: "E-Commerce Poster Design",
+        image: "https://i.postimg.cc/KzGGBFTD/dian-shi-ji.png",
+        category: "电商设计",
+        categoryEn: "E-commerce Design",
+        description: "转化导向的视觉排版，通过色彩对比与层级控制引导用户视觉。",
+        descriptionEn: "Conversion-driven visual typography utilizing color contrasts and hierarchical control to guide user vision.",
+        gradient: "bg-gradient-to-br from-gray-900 to-black",
+        year: "2023",
+        role: "Visual Designer",
+        nature: "视觉练习",
+        natureEn: "Visual Practice",
+        content: "在高密度信息环境中，系统通过网格规范和视觉层级引导用户视线。平衡商业数据转化指标与视觉呈现，运用光影处理提升画面材质客观质感，从而优化线上点击率。",
+        contentEn: "In high-density information environments, the system guides user sightlines through grid specifications and visual hierarchies. Balancing commercial data conversion metrics with visual presentation, it utilizes lighting treatments to enhance the objective texture of materials, thereby optimizing online click-through rates.",
+        detailedSections: [
+          {
+            type: "content-block",
+            title: "材质渲染与光影控制",
+            titleEn: "Material Rendering & Lighting Control",
+            text: "针对美妆与生活类产品，通过精确的光照系统还原材质的物理反射特性。利用对比色系强化主体的空间体积感，提升商业视觉的客观表现力。",
+            textEn: "For beauty and lifestyle products, the physical reflection characteristics of materials are restored through a precise lighting system. Contrasting color schemes are utilized to enhance the subject's spatial volume, elevating the objective expressiveness of commercial visuals.",
+            images: [
+              "https://i.postimg.cc/C1hhkY8b/kou-hong0000.png",
+              "https://i.postimg.cc/fLzzmZdK/xuan-ran-jiao-san0000.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "w-full h-full",
+            noPadding: true,
+            alignItems: "items-start"
+          },
+          {
+            type: "content-block",
+            title: "日用与家电视觉重构",
+            titleEn: "Appliance Visual Reconstruction",
+            text: "在海报设计中，剥离多余的环境修饰，将视觉核心聚焦于产品工业设计的结构线与表面工艺。采用中性背景直接衬托产品本体属性。",
+            textEn: "In the poster design, redundant environmental decorations are stripped away, focusing the visual core on the structural lines and surface craftsmanship of the product's industrial design. Neutral backgrounds are adopted to directly highlight inherent product attributes.",
+            images: [
+              "https://i.postimg.cc/gJzz8dhn/ya-shua0000.png",
+              "https://i.postimg.cc/W4kyDS09/chang-jing30000.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true,
+            alignItems: "items-start"
+          },
+          {
+            type: "content-block",
+            title: "3C数码品类精细化呈现",
+            titleEn: "Precision Rendering for 3C Electronics",
+            text: "鼠标等3C外设的设计重点在于体现人体工学特征与表面涂层材质。通过多角度视图与微距特写，传递产品的工程学细节与制造精度。",
+            textEn: "The design focus for 3C peripherals like mice lies in reflecting ergonomic features and surface coating materials. Through multi-angle views and macro close-ups, the engineering details and manufacturing precision of the products are conveyed.",
+            images: [
+              "https://i.postimg.cc/Hx6ptK0X/shu-chu0000.png",
+              "https://i.postimg.cc/HxYYXHM5/shu-chu-xiao-xi0000.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true,
+            alignItems: "items-start"
+          }
+        ],
+        layoutClass: "md:col-span-5 md:mt-32",
+        imageAspect: "aspect-[4/5]"
+      },
+      {
+        id: 8,
+        title: "IP 视觉设计",
+        titleEn: "IP Visual Design",
+        image: "https://i.postimg.cc/DmVdGHRV/zhan-ban1.jpg",
+        cardImage: "https://i.postimg.cc/zf8cctpC/tu-ceng-737.png",
+        coverClass: "object-cover",
+        heroLayout: "auto",
+        category: "IP 设计",
+        categoryEn: "IP Design",
+        description: "系统化构建IP角色设定与视觉延展系统，确立品牌特征的物理映射。",
+        descriptionEn: "Systematically building IP character settings and visual extension systems, establishing physical mappings of brand characteristics.",
+        gradient: "bg-gradient-to-br from-indigo-900 to-black",
+        year: "2024",
+        role: "Visual Designer",
+        nature: "独立项目",
+        natureEn: "Independent Project",
+        content: "本项目旨在建立具备高度识别性的数字IP资产。通过对形态比例、色彩规范及材质设定的精确把控，完成从概念草图到最终呈现的客观转化，并延展出涵盖多应用场景的视觉规范体系。",
+        contentEn: "This project aims to establish highly recognizable digital IP assets. Through precise control over morphological proportions, color specifications, and material settings, an objective transformation from conceptual sketches to final rendering is achieved, extending into a visual specification system covering multiple application scenarios.",
+        detailedSections: [
+          {
+            type: "content-block",
+            images: [
+              "https://i.postimg.cc/DmVdGHRV/zhan-ban1.jpg",
+              "https://i.postimg.cc/D04P8njL/zhan-ban2-qian-se.jpg"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start",
+            imageClasses: [
+              "md:col-span-7 w-full h-fit",
+              "md:col-span-5 w-full h-fit md:mt-24"
+            ],
+            imageContainerClass: "p-1.5 md:p-2.5 border border-white/20 bg-zinc-950 shadow-xl",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            images: [
+              "https://i.postimg.cc/MZnCyBgn/zhan-ban3-qian-se.jpg",
+              "https://i.postimg.cc/3w9BqL0K/zhan-ban4.jpg",
+              "https://i.postimg.cc/brS9spCV/zhan-ban5.jpg"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start mt-4",
+            imageClasses: [
+              "md:col-span-5 w-full h-fit",
+              "md:col-span-7 w-full h-fit md:mt-16",
+              "md:col-span-8 md:col-start-3 w-full h-fit mt-4 md:mt-12"
+            ],
+            imageContainerClass: "p-1.5 md:p-2.5 border border-white/20 bg-zinc-950 shadow-xl",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            images: [
+              "https://i.postimg.cc/RqrQtyyD/zhan-ban6.jpg"
+            ],
+            customGrid: "grid-cols-1 mt-4 md:mt-12 items-start",
+            imageClasses: [
+              "md:w-5/6 mx-auto w-full h-fit"
+            ],
+            imageContainerClass: "p-1.5 md:p-2.5 border border-white/20 bg-zinc-950 shadow-xl",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "形态推演与三维结构映射",
+            titleEn: "Form Deduction & 3D Structural Mapping",
+            text: "提取前期平面设定中的核心特征向量，执行角色向三维空间的拓扑重建。通过多维度的正交视图与动态渲染，客观呈现该IP的物理体块比例、表面材质参数及光影反馈状态。",
+            textEn: "Extracting core feature vectors from preliminary 2D settings to execute the topological reconstruction of the character into 3D space. Objectively presenting the IP's physical volume proportions, surface material parameters, and lighting feedback states through multi-dimensional orthographic views and dynamic rendering.",
+            images: [
+              "https://i.postimg.cc/W1MySLmr/ce.png",
+              "https://i.postimg.cc/7LwWWsXn/qqqq.jpg",
+              "https://i.postimg.cc/FKNBBWGZ/wzt.png",
+              "https://i.postimg.cc/zf8cctpC/tu-ceng-737.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start mt-8 md:mt-12",
+            imageClasses: [
+              "md:col-span-12 w-full h-fit",
+              "md:col-span-5 w-full h-fit md:mt-24",
+              "md:col-span-7 w-full h-fit md:mt-8",
+              "md:col-span-8 md:col-start-3 w-full h-fit mt-4 md:mt-16"
+            ],
+            imageContainerClass: "p-1.5 md:p-2.5 border border-white/20 bg-zinc-950 shadow-xl",
+            noPadding: true
+          }
+        ],
+        layoutClass: "md:col-span-6 md:col-start-7 md:mt-48"
+      },
+      {
+        id: 3,
+        title: "FLORIEL 智能互动系统",
+        titleEn: "FLORIEL Smart Plant Care System",
+        image: "https://i.postimg.cc/d0v7D2N2/hua-yu-ling-13.png",
+        category: "UI/UX 设计",
+        categoryEn: "UI/UX Design",
+        description: "融合数字孪生与自然数据的监测界面，提供客观化的植物养护指标。",
+        descriptionEn: "A monitoring interface merging digital twins with natural data, providing objective plant care metrics.",
+        gradient: "bg-gradient-to-bl from-zinc-800 to-black",
+        year: "2026",
+        role: "UI/UX Designer",
+        nature: "学术项目",
+        natureEn: "Academic Project",
+        content: "在全球低碳生活方式的背景下，都市人群普遍面临植物养护知识碎片化的问题。核心用户群体具备种植意愿，但缺乏连贯的健康判断能力。FLORIEL 的设计目的是通过结合 AR 与 AI 技术，为用户提供客观、系统化的监测指导，从而构建闭环的植物互助数据框架。",
+        contentEn: "Against the backdrop of a global low-carbon lifestyle, urbanites widely face the issue of fragmented plant care knowledge. The core user group is willing to plant but lacks coherent health judgment capabilities. FLORIEL is designed to provide objective, systematic monitoring guidance by combining AR and AI technologies, thereby constructing a closed-loop plant mutual aid data framework.",
+        detailedSections: [
+          {
+            type: "content-block",
+            title: "项目背景与数据获取",
+            titleEn: "Context & Data Acquisition",
+            text: "相关数据显示，传统搜索引擎的单次问答无法解决植物生命周期中的长期连贯性问题。缺乏系统化指导是导致健康指标下降的核心原因。系统设计由被动的零散检索转向主动的阶段性数据评估。",
+            textEn: "Relevant data indicates that single Q&A from traditional search engines cannot solve long-term continuity issues in a plant's lifecycle. A lack of systematic guidance is the core reason for declining health metrics. The system design shifts from passive, scattered retrieval to active, phased data assessment.",
+            images: [
+              "https://i.postimg.cc/hjsVKyS0/dang-qian-cheng-shi-huan-jing.png",
+              "https://i.postimg.cc/0jHmwzKN/zhi-wu-1.jpg",
+              "https://i.postimg.cc/PJFZwCvN/zhi-wu-2.jpg"
+            ],
+            customGrid: "grid-cols-2 md:grid-cols-3",
+            imageContainerClass: "aspect-auto h-auto w-full",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "用户引导与基础架构",
+            titleEn: "User Onboarding & Architecture",
+            text: "精简注册与登录的界面链路，降低表单交互带来的视觉噪声。系统主页通过模块化菜单与个人中心结合，降低结构的认知成本，引导用户建立客观的数字植物档案。",
+            textEn: "Streamlining the interface logic for registration and login to reduce visual noise from form interactions. The homepage combines modular menus with the personal center to lower structural cognitive costs, guiding users to establish objective digital plant profiles.",
+            images: [
+              "https://i.postimg.cc/x8dM8vCP/deng-lu.png",
+              "https://i.postimg.cc/66HCSmjm/zhu-ce.png",
+              "https://i.postimg.cc/T1HmDK5f/wo-de.png",
+              "https://i.postimg.cc/J0dJksHV/shou-ye-you-shang-jiao-cai-dan.png"
+            ],
+            customGrid: "grid-cols-2 md:grid-cols-4",
+            imageContainerClass: "aspect-auto h-auto w-full",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "AR与AI辅助识别模块",
+            titleEn: "AR & AI Recognition Module",
+            text: "系统集成增强现实与图像识别算法。设备摄像头扫描目标后，算法实时解析叶片与形态特征，输出客观的物种分类与基础健康诊断报告。",
+            textEn: "The system integrates augmented reality and image recognition algorithms. After the device camera scans the target, algorithms parse leaf and morphological features in real-time, outputting objective species classification and basic health diagnostic reports.",
+            images: [
+              "https://i.postimg.cc/rsYWrDR1/zhi-wu-shi-bie.png",
+              "https://i.postimg.cc/gjBRZxLH/2680ee3cc79e326b93aaa774d597b00.png",
+              "https://i.postimg.cc/FRp0hW9c/e3059d5a74db83aa87ca6190781920e.png"
+            ],
+            customGrid: "grid-cols-2 md:grid-cols-3",
+            imageContainerClass: "aspect-auto h-auto w-full",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "日常监测与预警机制",
+            titleEn: "Monitoring & Alert Mechanism",
+            text: "UI 卡片直观聚合当前的植物状态，系统依此生成定量的浇水与施肥排期。当底层病害数据库触发匹配时，即时生成并推送针对性的处理干预方案。同时集成了状态评估相关的商品流转入口。",
+            textEn: "UI cards intuitively aggregate current plant status, based on which the system generates quantitative watering and fertilizing schedules. When matches occur in the underlying disease database, targeted intervention plans are instantly generated and pushed, integrating circulation entries related to status assessment.",
+            images: [
+              "https://i.postimg.cc/1XzwXGtj/jin-ri-zhi-wu-zhuang-tai.png",
+              "https://i.postimg.cc/L5sL5tXr/mei-ri-ren-wu.png",
+              "https://i.postimg.cc/90NT7Dwm/xiang-qing.png",
+              "https://i.postimg.cc/j5cyRgsH/bing-hai-ti-xing.png",
+              "https://i.postimg.cc/G2Kvb7cQ/bing-hai-ti-xing-1.png",
+              "https://i.postimg.cc/tJgWJ3J9/shang-dian.png",
+              "https://i.postimg.cc/XN29hz1M/088FBFE17E8EF9A8C0FC730AE5230515.png"
+            ],
+            customGrid: "grid-cols-2 md:grid-cols-4",
+            imageContainerClass: "aspect-auto h-auto w-full",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "设备端全息预警界面",
+            titleEn: "Holographic Alert Interface",
+            text: "依托可穿戴设备进行全息空间下的主动预警系统交互演示。",
+            textEn: "Proactive early warning system interaction demonstration in holographic space relying on wearable devices.",
+            images: [
+              "https://i.postimg.cc/HnfnmX7w/wei-xin-tu-pian-20260321210701-2020-241.jpg"
+            ],
+            customGrid: "grid-cols-1",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "社区生态与流通体系",
+            titleEn: "Community Ecology & Circulation",
+            text: "构建基于量化指标的互助体系。用户在社区内的数据上传与经验共享行为可转化为平台积分。该积分能够在线上商城节点兑换实体物品，确立数据与物理实体的双向流通。",
+            textEn: "Building a mutual-aid framework based on quantifiable metrics. Users' data uploads and experience sharing within the community are converted into platform points. These points can be exchanged for physical items at online store nodes, establishing a dual circulation between data and physical entities.",
+            images: [
+              "https://i.postimg.cc/d0v7D2N2/hua-yu-ling-13.png",
+              "https://i.postimg.cc/P51pt3yM/hua-yu-ling-131.png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          },
+          {
+            type: "content-block",
+            title: "物联网集成与感知推演",
+            titleEn: "IoT Integration & Perception Reasoning",
+            text: "底层架构已预留硬件传感器的数据接入标准。未来规划通过收集光照及土壤湿度等物理参数，支撑养护算法由现状诊断向环境趋势推演发展。",
+            textEn: "The underlying architecture has reserved data integration standards for hardware sensors. Future plans involve collecting physical parameters such as light and soil moisture to support the evolution of care algorithms from current status diagnosis to environmental trend reasoning.",
+            images: [
+              "https://i.postimg.cc/vmM1Dr23/wu-nian-su-cai-(1).png",
+              "https://i.postimg.cc/vZ5gQqhH/wu-nian-su-cai-(5).png"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-2",
+            imageContainerClass: "aspect-auto w-full h-auto",
+            noPadding: true
+          }
+        ],
+        layoutClass: "md:col-span-7 md:mt-40",
+        imageAspect: "aspect-[3/4]"
+      },
+      {
+        id: 6,
+        title: "三维视频设计",
+        titleEn: "3D Video Design",
+        image: "https://i.postimg.cc/QMTzBScm/d1076a17-60c5-488c-9087-aeeeac4f6c74.png",
+        category: "IP 三维设计",
+        categoryEn: "3D IP Design",
+        description: "构建动态的数字 IP 资产，赋予角色立体的材质与光影表现。",
+        descriptionEn: "Building dynamic digital IP assets, endowing characters with three-dimensional materials and lighting.",
+        gradient: "bg-gradient-to-tr from-slate-900 via-zinc-900 to-neutral-900",
+        year: "2023",
+        role: "3D Artist",
+        nature: "技能演练",
+        natureEn: "Skill Practice",
+        content: "涵盖从概念建模、材质贴图到动画渲染的完整 3D 流程实践。设计注重材质的物理准确性与场景光影氛围的营造，为平面的 IP 角色注入生动的性格特征与空间体积感。",
+        contentEn: "Covering a complete 3D workflow from conceptual modeling and texture mapping to animation rendering. The design emphasizes physical accuracy of materials and scene lighting ambiance, injecting vivid character traits and spatial volume into 2D IP characters.",
+        detailedSections: [
+          {
+            type: "content-block",
+            videos: [
+              "https://raw.githubusercontent.com/1694676276-coder/1111/main/3%E6%9C%8818%E6%97%A5.mp4",
+              "https://raw.githubusercontent.com/1694676276-coder/1111/main/61229aa1b38f62c605af416048993138.mp4",
+              "https://raw.githubusercontent.com/1694676276-coder/1111/main/6dd8519e65afa10a4596a83299a0983c.mp4"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-12 md:gap-0 relative",
+            itemClasses: [
+              "md:col-span-8 md:col-start-1 md:-mt-8 transform md:rotate-[-2deg] z-20",
+              "md:col-span-7 md:col-start-6 md:mt-24 transform md:rotate-[3deg] z-30 md:-ml-8",
+              "md:col-span-8 md:col-start-3 md:mt-16 transform md:rotate-[-1deg] z-10 md:mb-12"
+            ],
+            mediaContainerClass: "aspect-auto w-full h-auto drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:z-50 hover:scale-105 transition-all duration-500",
+            noPadding: true
+          }
+        ],
+        layoutClass: "md:col-span-4 md:col-start-9 md:mt-12",
+        imageAspect: "aspect-[4/5]"
+      },
+      {
+        id: 5,
+        title: "个人手绘",
+        titleEn: "Personal Illustration",
+        image: "https://i.postimg.cc/R0HY3Gwp/wei-xin-tu-pian-2026-03-18-142050-244.jpg",
+        heroLayout: "auto",
+        category: "手绘插画",
+        categoryEn: "Illustration",
+        description: "记录物理媒介实践，回归原初线条感知与客观形体解构。",
+        descriptionEn: "Recording physical medium practices, returning to primal line perception and objective form deconstruction.",
+        gradient: "bg-gradient-to-br from-zinc-800 to-stone-900",
+        year: "2023",
+        role: "Illustrator",
+        nature: "个人创作",
+        natureEn: "Personal Artwork",
+        content: "对我来说，绘画要么是一种放松的机会，要么是研究和分析眼前事物的方式。我更喜欢传统素描，因为它让我能够集中注意力并进行创作，而素描的精致细节有助于我感知美。",
+        contentEn: "Drawing serves either as an opportunity for relaxation or a method to study and analyze objects. Traditional sketching is preferred, as it concentrates focus and facilitates creation, while its delicate details assist in the perception of aesthetics.",
+        detailedSections: [
+          {
+            type: "content-block",
+            images: [
+              "https://i.postimg.cc/KzMxLNcN/wei-xin-tu-pian-2026-03-22-230419-652.jpg",
+              "https://i.postimg.cc/SsMk8rQd/wei-xin-tu-pian-2026-03-22-230424-578.jpg",
+              "https://i.postimg.cc/N0VQ5VtC/wei-xin-tu-pian-2026-03-22-230429-251.jpg",
+              "https://i.postimg.cc/QtTh5bNJ/wei-xin-tu-pian-2026-03-22-230434-874.jpg",
+              "https://i.postimg.cc/856NWHkb/wei-xin-tu-pian-2026-03-22-230440-445.jpg"
+            ],
+            customGrid: "grid-cols-1 md:grid-cols-12 md:gap-0 relative",
+            imageClasses: [
+              "md:col-span-7 md:col-start-1 md:-mt-8 transform md:rotate-[-3deg] z-20",           
+              "md:col-span-6 md:col-start-7 md:mt-16 transform md:rotate-[4deg] z-30 md:-ml-12",          
+              "md:col-span-6 md:col-start-2 md:mt-12 transform md:rotate-[-2deg] z-10 md:mb-12",  
+              "md:col-span-6 md:col-start-6 md:-mt-24 transform md:rotate-[2deg] z-40 md:ml-8", 
+              "md:col-span-8 md:col-start-3 md:mt-8 transform md:rotate-[-1deg] z-20"   
+            ],
+            imageContainerClass: "aspect-auto w-full h-auto drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] hover:z-50 hover:scale-105 transition-all duration-500",
+            noPadding: true
+          }
+        ],
+        layoutClass: "md:col-span-8 md:col-start-3 md:mt-48 md:mb-32",
+        imageAspect: "aspect-[4/5]"
+      }
+    ];
+
+    const ABOUT_DATA = {
+      name: "王梓涵",
+      nameEn: "ZANE",
+      title: "空间设计师 · 艺术教师",
+      titleEn: "Spatial Designer · Art Instructor",
+      quote: "“在广袤的世界版图里，构建独属于我的视觉坐标。”",
+      quoteEn: "“Constructing my unique visual coordinates across the vast map of the world.”",
+      bio: [
+        "在学校的设计任务中，我擅长运用软件构造教授需要的设计。在现实生活中，我更擅长在真实的地理维度中捕捉灵感。从小到大，我的足迹遍布全球 30 多个国家、100 多个地区，从文艺复兴的余晖到现代主义，这种跨文化的感官冲击重塑了我的艺术底层逻辑。",
+        "我在吉隆坡 USM 设计论坛 (MOD) 与全球设计师探讨创意，面对面和伦敦奥运标志设计师奥利弗请教问题，这些经历让我习惯于在设计中嵌入更宏大的社会与文化思考。这种“行万里路”换来的通感，赋予了我敏锐的视觉直觉。我不满足于平庸的视觉堆砌，而是致力于将全球化的审美触角转化为具有辨识度、呼吸感且富有叙事力的艺术语言。"
+      ],
+      bioEn: [
+        "In academic tasks, I excel at constructing designs using software to meet requirements. In reality, I am more adept at capturing inspiration across physical geographic dimensions. From childhood to adulthood, my footprints have covered over 30 countries and 100 regions worldwide. From the afterglow of the Renaissance to Modernism, this cross-cultural sensory impact has reshaped my fundamental artistic logic.",
+        "At the USM Design Forum (MOD) in Kuala Lumpur, I discussed creativity with global designers and consulted face-to-face with Oliver, the designer of the London Olympics logo. These experiences have accustomed me to embedding broader social and cultural considerations into my designs. This synesthesia, earned through 'traveling thousands of miles', endows me with a sharp visual intuition. Unsatisfied with mediocre visual accumulation, I am committed to transforming globalized aesthetic sensibilities into an artistic language that is recognizable, breathable, and highly narrative."
+      ],
+      education: [
+        {
+          degree: "硕士 / Master's Degree",
+          school: "马来西亚理科大学 (QS前150) / Universiti Sains Malaysia",
+          major: "创意产业设计 / Creative Industry Design",
+          desc: "GPA: 3.77/4 专业第一，专业课程等级全A / Ranked 1st in major, all core courses graded A"
+        },
+        {
+          degree: "本科 / Bachelor's Degree",
+          school: "厦门理工学院 · 闽南科技学院 / Xiamen University of Technology · Minnan Science and Technology Institute",
+          major: "数字媒体艺术 · 管理 (双学士) / Digital Media Art · Management (Dual Degree)",
+          desc: "GPA: 3.51 (专业前5%)，2024届优秀毕业生，在校期间每年获院奖学金。主修课程：三维技术(满分)、手绘表现(满分)、插图插画设计(满分) / Top 5%, 2024 Outstanding Graduate, annual scholarships. Major courses: 3D Technology (Full marks), Sketching (Full marks), Illustration Design (Full marks)"
+        }
+      ],
+      experience: [
+        {
+          company: "柒森会展 / Qisen Exhibition",
+          role: "展厅设计师 / Exhibition Designer",
+          date: "2023.11 - 2025.9",
+          bullets: [
+            "参与多个国家级/省级艺术展（如：中国美协主席范迪安个展、中央美院副院长邱志杰鼓浪屿老灵魂展览馆）的空间叙事与视觉系统设计。 / Participated in spatial narrative and visual system design for multiple national/provincial art exhibitions (e.g., Solo Exhibition by Fan Di'an, Chairman of the China Artists Association; Gulangyu Old Soul Exhibition Hall by Qiu Zhijie, Vice President of CAFA).",
+            "独立负责从概念提案、3D建模渲染到落地施工的全流程跟进，确保艺术方案的高精度还原。（第15届海峡两岸(厦门)文化产业博览交易会非遗竹艺展览馆设计） / Independently managed the entire process from concept proposal, 3D modeling/rendering to on-site construction, ensuring high-precision realization of art proposals (15th Cross-Strait Cultural Industries Fair - Intangible Cultural Heritage Bamboo Art Exhibition).",
+            "协同多方资源，优化施工节点与物料工艺，有效控制项目成本并提升视觉表现力。连续三年参与搭建厦门国际艺术设计展（与清华美院合作）。 / Coordinated multiple resources to optimize construction nodes and material craftsmanship, effectively controlling project costs while enhancing visual expression. Participated in building the Xiamen International Art & Design Exhibition for three consecutive years (in collaboration with Tsinghua University Academy of Arts & Design)."
+          ]
+        }
+      ],
+      skills: [
+        { category: "AIGC 生成式人工智能", categoryEn: "AIGC", items: "Midjourney, Stable Diffusion, Gemini" },
+        { category: "三维 / 平面设计", categoryEn: "3D / Graphic Design", items: "UE5, C4D, ZBrush, PS, Ai" },
+        { category: "视觉系统与策展", categoryEn: "Visual System & Curation", items: "Adobe Creative Cloud, 品牌视觉叙事 (Brand Narrative), 策展思维 (Curatorial Thinking)" }
+      ],
+      awards: [
+        "2025 米兰国际艺术设计银奖并受邀荣誉评委 / 2025 Milan International Art & Design Silver Award (Invited Honorary Judge)",
+        "NCDA 第十二届未来设计师大赛二等奖 / 12th NCDA Future Designer Competition Second Prize",
+        "2024 第16届大广赛UI组全国赛区优秀奖 · 福建赛区二等奖 / 2024 16th National Advertising Art Design Competition for College Students (UI Category) National Excellence Award & Fujian Provincial Second Prize",
+        "2024 第十二届CMIT数字媒体科技创意竞赛福建赛区三等奖 / 2024 12th CMIT Digital Media Tech Innovation Competition Fujian Provincial Third Prize",
+        "2023 “国青杯”全国高校艺术设计三等奖 / 2023 'Guoqing Cup' National College Art & Design Third Prize",
+        "2023.11 第三十届中国国际广告节学生代表 / 30th China International Advertising Festival Student Representative (Nov 2023)"
+      ]
+    };
+
+    const EXHIBITIONS = [
+      {
+        id: 1,
+        title: "2025 厦门国际艺术设计周",
+        titleEn: "2025 Xiamen International Design Art Week",
+        image: "https://i.postimg.cc/hvLd7vng/wei-xin-tu-pian-2026-03-18-235645-290.jpg",
+        processText: "确立空间动线并实施模块化展具的现场组装。通过局部光源控制强化参展作品的物理属性与视觉层级。",
+        processTextEn: "Established spatial circulation and implemented on-site assembly of modular display fixtures. Enhanced the physical attributes and visual hierarchy of exhibited works through localized lighting control.",
+        gallery: [
+          "https://i.postimg.cc/zvCgRvNJ/wei-xin-tu-pian-2026-03-18-235656-669.jpg",
+          "https://i.postimg.cc/qqs3CqrJ/wei-xin-tu-pian-2026-03-18-235659-723.jpg",
+          "https://i.postimg.cc/8cQv5WqZ/wei-xin-tu-pian-2026-03-18-235702-887.jpg",
+          "https://i.postimg.cc/L5t1Z5py/wei-xin-tu-pian-2026-03-18-235706-089.jpg",
+          "https://i.postimg.cc/GtFystCX/wei-xin-tu-pian-2026-03-18-235709-233.jpg",
+          "https://i.postimg.cc/mkYHFks5/wei-xin-tu-pian-2026-03-18-235712-557.jpg",
+          "https://i.postimg.cc/x8vzb82W/wei-xin-tu-pian-2026-03-18-235720-068.jpg"
+        ]
+      },
+      {
+        id: 2,
+        title: "第二届全国大学生工艺美术作品展",
+        titleEn: "The 2nd National College Students' Arts and Crafts Exhibition",
+        image: "https://i.postimg.cc/0N368TS3/wei-xin-tu-pian-20260319000649-365-1.jpg",
+        processText: "针对工艺美术材质的多样性，调整展台承重结构与表面反射率，确保物理展品的客观色彩还原。",
+        processTextEn: "Addressed the material diversity of arts and crafts by adjusting the load-bearing structure and surface reflectance of the booths, ensuring objective color reproduction of physical exhibits.",
+        gallery: [
+          "https://i.postimg.cc/wTBqN3gy/wei-xin-tu-pian-20260319000639-363-1.jpg",
+          "https://i.postimg.cc/MZ5ZX12W/wei-xin-tu-pian-20260319000644-364-1.jpg",
+          "https://i.postimg.cc/kMsMDW36/wei-xin-tu-pian-20260319000649-365-1.jpg",
+          "https://i.postimg.cc/mZjZh7fF/wei-xin-tu-pian-20260319000653-366-1.jpg",
+          "https://i.postimg.cc/ZYHY06tv/wei-xin-tu-pian-20260319000657-367-1.jpg",
+          "https://i.postimg.cc/QNmNVcGT/wei-xin-tu-pian-20260319000700-368-1.jpg",
+          "https://i.postimg.cc/7P9PbS8g/wei-xin-tu-pian-20260319000703-369-1.jpg",
+          "https://i.postimg.cc/QxM87VhC/wei-xin-tu-pian-20260319000707-370-1.jpg"
+        ]
+      },
+      {
+        id: 3,
+        title: "第15届海峡两岸（厦门）文化产业博览交易会非遗竹艺展览馆",
+        titleEn: "The Intangible Cultural Heritage Bamboo Art Exhibition Hall at the 15th Cross-Strait (Xiamen) Cultural Industries Fair",
+        image: "https://i.postimg.cc/hGwJSkmy/w.jpg",
+        processText: "构建大规模竹构架的主体支撑系统，运用非标准化材料进行空间划分，测试并修正大跨度结构的安全冗余度。",
+        processTextEn: "Constructed the primary support system using large-scale bamboo frameworks, utilized non-standard materials for spatial division, and tested/calibrated the safety redundancy of large-span structures.",
+        gallery: [
+          "https://i.postimg.cc/0jX3pWZy/e.jpg",
+          "https://i.postimg.cc/D0pDqj5y/i.jpg",
+          "https://i.postimg.cc/wM4PhfFv/q.jpg",
+          "https://i.postimg.cc/fyqFx25b/t.jpg",
+          "https://i.postimg.cc/brVMQCLd/w.jpg",
+          "https://i.postimg.cc/4y2MzLwm/y.jpg",
+          "https://i.postimg.cc/RCgj5hm7/cai-zhi-tu.jpg",
+          "https://i.postimg.cc/nV36brxK/li-mian-tu2.jpg",
+          "https://i.postimg.cc/T1NSr7Q6/li-mian-tu4.jpg"
+        ]
+      },
+      {
+        id: 4,
+        title: "2024 厦门国际艺术设计周",
+        titleEn: "2024 Xiamen International Design Art Week",
+        image: "https://i.postimg.cc/s21QCjM8/wei-xin-tu-pian-20260319110156-378-1.jpg",
+        processText: "统筹全场导视系统与展区物理边界的部署。通过数据测算优化高峰期人流密度分布与空间承载力。",
+        processTextEn: "Coordinated the deployment of the venue's wayfinding system and the physical boundaries of exhibition areas. Optimized peak crowd density distribution and spatial capacity through data calculations.",
+        gallery: [
+          "https://i.postimg.cc/T1VtYTH1/wei-xin-tu-pian-20260319110130-371-1.jpg",
+          "https://i.postimg.cc/qqs1MpZR/wei-xin-tu-pian-20260319110136-372-1.jpg",
+          "https://i.postimg.cc/90dLFcNr/wei-xin-tu-pian-20260319110140-373-1.jpg",
+          "https://i.postimg.cc/vTFPs4XG/wei-xin-tu-pian-20260319110143-374-1.jpg",
+          "https://i.postimg.cc/GtFXhbS1/wei-xin-tu-pian-20260319110147-375-1.jpg",
+          "https://i.postimg.cc/T1VtYTHT/wei-xin-tu-pian-20260319110150-376-1.jpg",
+          "https://i.postimg.cc/MH79Kzrx/wei-xin-tu-pian-20260319110156-378-1.jpg",
+          "https://i.postimg.cc/T1VtYTH2/wei-xin-tu-pian-20260319110159-379-1.jpg"
+        ]
+      },
+      {
+        id: 5,
+        title: "面朝大海·鼓浪屿百年老建筑及当代名家作品展",
+        titleEn: "Facing the Sea on Gulangyu Island Exhibition of Contemporary Masterpieces",
+        image: "https://i.postimg.cc/6QS79kZm/wei-xin-tu-pian-20260319111108-380-1.jpg",
+        processText: "在历史建筑内部进行弱介入式布展。采用独立支撑体系与冷光源，确保展陈干预不破坏原有建筑的结构客观性。",
+        processTextEn: "Executed weak-intervention exhibition layout within historic buildings. Employed independent support systems and cold light sources to ensure exhibition interventions did not disrupt the structural objectivity of the original architecture.",
+        gallery: [
+          "https://i.postimg.cc/vmGbQmqn/wei-xin-tu-pian-20260323144233-389-1.jpg",
+          "https://i.postimg.cc/g0GmY0Sg/wei-xin-tu-pian-20260323144244-390-1.jpg",
+          "https://i.postimg.cc/fbMDwb2H/wei-xin-tu-pian-20260323144245-391-1.jpg",
+          "https://i.postimg.cc/HL3HjCRX/wei-xin-tu-pian-20260323144249-392-1.jpg",
+          "https://i.postimg.cc/cJTZ6N2f/wei-xin-tu-pian-20260323144252-393-1.jpg",
+          "https://i.postimg.cc/MGtxX8Nt/wei-xin-tu-pian-20260323144255-394-1.jpg"
+        ]
+      }
+    ];
+
+    // --- Helper Functions ---
+    const Frame = (content, className = "") => `
+      <div class="p-1.5 md:p-2.5 border border-white/20 bg-zinc-950 shadow-xl h-fit ${className}">
+        <div class="w-full relative overflow-hidden bg-zinc-900 flex items-center justify-center group interactable h-fit">
+          ${content}
+        </div>
+      </div>
+    `;
+
+    // --- State & Routing ---
+    let currentScrollY = 0;
+    
+    function hideAllViews() {
+      ['view-home', 'view-about', 'view-projects', 'view-exhibition', 'view-exhibition-detail', 'view-detail'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      document.getElementById('global-footer').classList.remove('hidden');
+    }
+
+    function navigate(view, id = null) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        hideAllViews();
+        document.getElementById(`view-${view}`).classList.remove('hidden');
+        
+        if (view === 'detail' || view === 'exhibition' || view === 'exhibition-detail') {
+          document.getElementById('global-footer').classList.add('hidden');
+        }
+        
+        if (view === 'home') renderHome();
+        if (view === 'about') renderAbout();
+        if (view === 'projects') renderAllProjects();
+        if (view === 'exhibition') renderExhibition();
+        if (view === 'exhibition-detail') renderExhibitionDetail();
+        if (view === 'detail') renderProjectDetail(id);
+        
+        lucide.createIcons();
+      }, 300);
+    }
+
+    // --- Render Functions ---
+    function renderHome() {
+      const container = document.getElementById('view-home');
+      
+      const projectCardsHTML = PROJECTS.slice(0, 3).map((p, idx) => `
+        <div onclick="navigate('detail', ${p.id})" class="group relative flex flex-col md:flex-row items-center gap-8 md:gap-16 interactable cursor-pointer w-full mb-24 last:mb-0">
+          <div class="hidden md:block text-zinc-700 text-6xl font-light w-16 group-hover:text-zinc-500 transition-colors duration-500">
+            0${idx + 1}
+          </div>
+          <div class="w-full md:w-3/5 relative rounded-3xl overflow-hidden aspect-video bg-zinc-900 border border-white/10 shadow-2xl transition-all duration-700 ease-out group-hover:shadow-[0_0_40px_rgba(255,255,255,0.1)] group-hover:-translate-y-2">
+            ${p.image || p.cardImage ? 
+              `<img src="${p.cardImage || p.image}" alt="${p.title}" class="absolute inset-0 w-full h-full ${p.coverClass || 'object-cover'} opacity-80 group-hover:opacity-100 transition-all duration-700 group-hover:scale-105" />` 
+              : 
+              `<div class="absolute inset-0 opacity-80 transition-transform duration-700 ease-out group-hover:scale-105 ${p.gradient}"></div>`
+            }
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+          </div>
+          <div class="w-full md:w-1/4 flex flex-col gap-4">
+            <div>
+              <span class="text-zinc-300 text-sm tracking-widest">${p.category}</span>
+              <span class="text-zinc-600 text-xs tracking-[0.2em] uppercase block mt-1">${p.categoryEn}</span>
+            </div>
+            <div>
+              <h3 class="text-3xl font-medium text-zinc-100 group-hover:text-white transition-colors">${p.title}</h3>
+              <h4 class="text-sm font-serif italic text-zinc-500 mt-1 group-hover:text-zinc-400 transition-colors">${p.titleEn}</h4>
+            </div>
+            <div class="mt-2">
+              <p class="text-zinc-400 leading-relaxed font-light text-sm">${p.description}</p>
+              <p class="text-zinc-600 leading-relaxed font-light text-xs mt-2">${p.descriptionEn}</p>
+            </div>
+            <div class="mt-4 flex items-center gap-2 text-sm text-zinc-300 group-hover:text-white transition-colors">
+              <span>查看详情 / Explore</span>
+              <i data-lucide="arrow-right" class="w-4 h-4 transform group-hover:translate-x-2 transition-transform duration-300"></i>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="w-full relative z-10 animate-fadeIn">
+          <section class="h-screen flex flex-col justify-center items-center px-6 md:px-24 relative overflow-hidden">
+            <div id="home-hero-content" class="max-w-5xl w-full h-full flex flex-col justify-center items-center transition-all duration-700 ease-out">
+              <div class="relative z-10 flex flex-col items-center justify-center transition-all duration-500" onmouseenter="this.classList.add('scale-105'); document.getElementById('home-text').classList.add('opacity-0'); document.getElementById('home-links').classList.remove('opacity-0', 'pointer-events-none');" onmouseleave="this.classList.remove('scale-105'); document.getElementById('home-text').classList.remove('opacity-0'); document.getElementById('home-links').classList.add('opacity-0', 'pointer-events-none');">
+                
+                <div id="home-text" class="flex flex-col items-center text-center transition-opacity duration-500">
+                  <h1 class="text-7xl md:text-[9rem] font-serif italic font-light leading-none text-transparent bg-clip-text bg-gradient-to-b from-white to-zinc-500 tracking-tight mb-2">ZANE</h1>
+                  <span class="text-2xl md:text-4xl font-sans font-light tracking-[0.4em] text-zinc-200 block mb-2">作品集</span>
+                  <span class="text-sm md:text-lg font-serif italic text-zinc-500 uppercase tracking-widest block mb-8">Portfolio</span>
+                  <div class="w-12 h-px bg-zinc-600 mb-6"></div>
+                  <p class="text-zinc-400 text-sm tracking-[0.2em] font-light">艺术创造与视觉策展<span class="block text-xs text-zinc-600 mt-2 uppercase tracking-widest">Artworks & Visual Curation</span></p>
+                </div>
+                
+                <div id="home-links" class="flex flex-col items-center gap-8 transition-opacity duration-500 opacity-0 absolute pointer-events-none delay-100">
+                  <div class="flex flex-row justify-center gap-3 md:gap-6 w-full max-w-5xl px-4 overflow-x-auto">
+                    <button onclick="navigate('about')" class="interactable group flex flex-col items-center justify-center gap-2 md:gap-4 p-2 md:p-8 w-28 md:w-56 aspect-square rounded-2xl md:rounded-[2rem] bg-white/5 border border-white/5 backdrop-blur-md hover:bg-white/10 hover:border-white/20 hover:-translate-y-2 transition-all duration-500 shadow-2xl shrink-0">
+                      <span class="text-zinc-500 text-[10px] md:text-xs tracking-[0.3em] font-medium">01</span>
+                      <span class="text-sm md:text-xl font-medium text-zinc-100 group-hover:text-white transition-colors text-center">关于我<span class="block text-[8px] md:text-xs font-serif italic text-zinc-500 mt-1 md:mt-2 tracking-widest uppercase">ABOUT ME</span></span>
+                      <div class="w-0 h-px bg-white/50 group-hover:w-8 md:group-hover:w-12 transition-all duration-500 mt-1 md:mt-2"></div>
+                    </button>
+                    <button onclick="navigate('projects')" class="interactable group flex flex-col items-center justify-center gap-2 md:gap-4 p-2 md:p-8 w-28 md:w-56 aspect-square rounded-2xl md:rounded-[2rem] bg-white/5 border border-white/5 backdrop-blur-md hover:bg-white/10 hover:border-white/20 hover:-translate-y-2 transition-all duration-500 shadow-2xl shrink-0">
+                      <span class="text-zinc-500 text-[10px] md:text-xs tracking-[0.3em] font-medium">02</span>
+                      <span class="text-sm md:text-xl font-medium text-zinc-100 group-hover:text-white transition-colors text-center">项目归档<span class="block text-[8px] md:text-xs font-serif italic text-zinc-500 mt-1 md:mt-2 tracking-widest uppercase">PROJECTS</span></span>
+                      <div class="w-0 h-px bg-white/50 group-hover:w-8 md:group-hover:w-12 transition-all duration-500 mt-1 md:mt-2"></div>
+                    </button>
+                    <button onclick="navigate('exhibition')" class="interactable group flex flex-col items-center justify-center gap-2 md:gap-4 p-2 md:p-8 w-28 md:w-56 aspect-square rounded-2xl md:rounded-[2rem] bg-white/5 border border-white/5 backdrop-blur-md hover:bg-white/10 hover:border-white/20 hover:-translate-y-2 transition-all duration-500 shadow-2xl shrink-0">
+                      <span class="text-zinc-500 text-[10px] md:text-xs tracking-[0.3em] font-medium">03</span>
+                      <span class="text-sm md:text-xl font-medium text-zinc-100 group-hover:text-white transition-colors text-center">实体展览<span class="block text-[8px] md:text-xs font-serif italic text-zinc-500 mt-1 md:mt-2 tracking-widest uppercase">EXHIBITION</span></span>
+                      <div class="w-0 h-px bg-white/50 group-hover:w-8 md:group-hover:w-12 transition-all duration-500 mt-1 md:mt-2"></div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="px-6 md:px-24 pt-12 pb-24 relative z-10 bg-zinc-950/50 backdrop-blur-lg">
+            <div class="flex justify-between items-end mb-20 border-b border-white/10 pb-8">
+              <div>
+                <h2 class="text-3xl font-medium text-zinc-100">精选项目</h2>
+                <p class="text-sm font-serif italic text-zinc-500 mt-2 tracking-widest uppercase">Selected Projects</p>
+              </div>
+              <div class="text-right">
+                <span class="text-zinc-400 text-sm">此时此地</span>
+                <span class="block text-xs text-zinc-600 mt-1 uppercase tracking-widest">Here & Now</span>
+              </div>
+            </div>
+            
+            <div class="flex flex-col">
+              ${projectCardsHTML}
+            </div>
+
+            <div class="mt-32 flex justify-center">
+              <button onclick="navigate('projects')" class="interactable group relative overflow-hidden rounded-full px-12 py-5 bg-white/5 border border-white/10 backdrop-blur-xl hover:bg-white/10 transition-all duration-300">
+                <div class="relative z-10 flex items-center gap-3 text-zinc-200 group-hover:text-white">
+                  <span class="tracking-widest text-sm">查看所有项目 <span class="text-xs text-zinc-500 uppercase ml-2">View Archive</span></span>
+                  <i data-lucide="move-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform text-zinc-400"></i>
+                </div>
+                <div class="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              </button>
+            </div>
+          </section>
+        </div>
+      `;
+    }
+
+    function renderAbout() {
+      const container = document.getElementById('view-about');
+      
+      const bioHTML = ABOUT_DATA.bio.map((p, i) => `<div><p class="mb-2">${p}</p><p class="text-zinc-500 text-sm">${ABOUT_DATA.bioEn[i]}</p></div>`).join('');
+      const eduHTML = ABOUT_DATA.education.map(e => {
+        const [deg, degEn] = e.degree.split(" / ");
+        const [sch, schEn] = e.school.split(" / ");
+        const [maj, majEn] = e.major.split(" / ");
+        const [desc, descEn] = e.desc.split(" / ");
+        return `<div class="group"><div class="flex flex-col md:flex-row md:items-baseline gap-2 md:gap-4 mb-2"><h3 class="text-2xl font-medium text-zinc-100 group-hover:text-white transition-colors">${sch}</h3><span class="text-zinc-500 font-serif italic text-lg">${deg}</span></div><div class="mb-4"><span class="text-zinc-600 text-xs uppercase block tracking-widest">${schEn} • ${degEn}</span></div><p class="text-zinc-200 mb-1">${maj}</p><p class="text-zinc-500 text-xs mb-3 uppercase tracking-wider">${majEn}</p><p class="text-zinc-400 font-light text-sm">${desc}</p><p class="text-zinc-600 font-light text-xs mt-1">${descEn}</p></div>`;
+      }).join('');
+      const expHTML = ABOUT_DATA.experience.map(e => {
+        const [comp, compEn] = e.company.split(" / ");
+        const [role, roleEn] = e.role.split(" / ");
+        const bullets = e.bullets.map(b => {
+          const [cn, en] = b.split(" / ");
+          return `<li class="flex items-start gap-3"><span class="text-zinc-600 mt-1.5">•</span><div><p class="text-zinc-300 font-light text-sm leading-relaxed">${cn}</p><p class="text-zinc-500 font-light text-xs leading-relaxed mt-1">${en}</p></div></li>`;
+        }).join('');
+        return `<div class="group"><div class="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2 mb-2"><h3 class="text-2xl font-medium text-zinc-100 group-hover:text-white transition-colors">${role}</h3><span class="text-zinc-500 tracking-widest text-sm">${e.date}</span></div><p class="text-zinc-600 text-xs uppercase mb-3 tracking-widest">${roleEn}</p><p class="text-zinc-300 mb-1 tracking-wider text-sm">${comp}</p><p class="text-zinc-600 mb-6 uppercase tracking-wider text-xs">${compEn}</p><ul class="space-y-6">${bullets}</ul></div>`;
+      }).join('');
+      const skillsHTML = ABOUT_DATA.skills.map(s => `<div><p class="text-zinc-200 font-medium">${s.category}</p><p class="text-zinc-600 text-xs uppercase mb-2 tracking-widest">${s.categoryEn}</p><p class="text-zinc-400 font-light text-sm">${s.items}</p></div>`).join('');
+      const awardsHTML = ABOUT_DATA.awards.map(a => {
+        const [cn, en] = a.split(" / ");
+        return `<li class="border-b border-white/5 pb-4 last:border-0"><p class="text-zinc-300 font-light text-sm leading-relaxed">${cn}</p><p class="text-zinc-600 font-light text-xs leading-relaxed mt-1 uppercase">${en}</p></li>`;
+      }).join('');
+
+      container.innerHTML = `
+        <div class="w-full relative z-10 pt-32 pb-24 px-6 md:px-24 min-h-screen animate-fadeIn">
+          <div class="flex justify-between items-center mb-12">
+            <button onclick="navigate('home')" class="interactable flex items-center gap-3 text-zinc-400 hover:text-white transition-colors group"><i data-lucide="arrow-left" class="w-5 h-5 group-hover:-translate-x-1 transition-transform"></i><div class="flex flex-col text-left"><span class="text-sm tracking-widest">返回主页</span><span class="text-[10px] text-zinc-600 uppercase">Back to Home</span></div></button>
+            <button class="interactable flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"><i data-lucide="download" class="w-4 h-4"></i><div class="flex flex-col text-right"><span class="text-sm tracking-widest">简历下载</span><span class="text-[10px] text-zinc-600 uppercase">Resume PDF</span></div></button>
+          </div>
+          <div class="relative w-full aspect-[4/3] md:aspect-[16/10] rounded-[2rem] overflow-hidden mb-20 border border-white/10 shadow-2xl interactable group">
+            <div class="absolute inset-0 bg-zinc-900"></div>
+            <img id="about-hero-img" src="https://i.postimg.cc/VNLgjgQy/d46026e202e357500da41aaaf5d5fbdd.jpg" class="absolute inset-0 w-full h-full object-cover object-center transition-transform duration-[2s] group-hover:scale-105" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 pointer-events-none"></div>
+          </div>
+          <div class="max-w-6xl mx-auto">
+            <div id="about-title" class="mb-20">
+              <h1 class="text-6xl md:text-8xl font-serif italic text-zinc-100 mb-2 tracking-tight leading-none">关于 ZANE</h1>
+              <h2 class="text-2xl md:text-4xl text-zinc-500 tracking-widest mb-6 font-light uppercase">About Me</h2>
+              <p class="text-zinc-300 tracking-[0.2em] text-sm">${ABOUT_DATA.title}<span class="block text-xs text-zinc-600 mt-1 uppercase tracking-widest">${ABOUT_DATA.titleEn}</span></p>
+            </div>
+            <div class="space-y-24">
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-12 items-start"><div class="md:col-span-4"><h2 class="text-zinc-300 text-lg tracking-[0.2em] font-medium">愿景 <span class="block text-xs text-zinc-600 mt-1 uppercase">Vision</span></h2><div class="w-8 h-px bg-zinc-700 mt-4"></div></div><div class="md:col-span-8 space-y-8"><div><h3 class="text-3xl md:text-4xl font-serif text-white leading-tight italic">${ABOUT_DATA.quote}</h3><h4 class="text-xl md:text-2xl font-serif text-zinc-500 leading-tight italic mt-3">${ABOUT_DATA.quoteEn}</h4></div><div class="space-y-8 text-zinc-300 font-light leading-relaxed text-base">${bioHTML}</div></div></div>
+              <div class="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-12 items-start"><div class="md:col-span-4"><h2 class="text-zinc-300 text-lg tracking-[0.2em] font-medium">教育背景 <span class="block text-xs text-zinc-600 mt-1 uppercase">Education</span></h2><div class="w-8 h-px bg-zinc-700 mt-4"></div></div><div class="md:col-span-8 space-y-12">${eduHTML}</div></div>
+              <div class="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-12 items-start"><div class="md:col-span-4"><h2 class="text-zinc-300 text-lg tracking-[0.2em] font-medium">工作经历 <span class="block text-xs text-zinc-600 mt-1 uppercase">Experience</span></h2><div class="w-8 h-px bg-zinc-700 mt-4"></div></div><div class="md:col-span-8 space-y-12">${expHTML}</div></div>
+              <div class="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
+                <div><h2 class="text-zinc-300 text-lg tracking-[0.2em] font-medium">核心技能 <span class="block text-xs text-zinc-600 mt-1 uppercase">Core Skills</span></h2><div class="w-8 h-px bg-zinc-700 mt-4 mb-10"></div><div class="space-y-8">${skillsHTML}</div></div>
+                <div><h2 class="text-zinc-300 text-lg tracking-[0.2em] font-medium">获奖荣誉 <span class="block text-xs text-zinc-600 mt-1 uppercase">Selected Awards</span></h2><div class="w-8 h-px bg-zinc-700 mt-4 mb-10"></div><ul class="space-y-6">${awardsHTML}</ul></div>
+              </div>
+              
+              <!-- AI Widget -->
+              <div class="mt-24 p-8 md:p-12 rounded-[2rem] bg-white/5 border border-white/10 backdrop-blur-xl shadow-2xl relative overflow-hidden group">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -z-10 group-hover:bg-purple-500/20 transition-colors duration-1000"></div>
+                <div class="flex items-center gap-4 mb-8"><div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center border border-white/20"><i data-lucide="sparkles" class="w-6 h-6 text-purple-400"></i></div><div><h3 class="text-2xl font-medium text-zinc-100">AI 虚拟策展人 <span class="text-sm text-zinc-500 font-serif italic block mt-1">Virtual Curator</span></h3></div></div>
+                <div class="space-y-6">
+                  <p class="text-zinc-300 font-light text-base">您可以向我提问关于 ZANE 的设计理念、履历或专业技能。<span class="block text-sm text-zinc-600 mt-1">Ask questions regarding ZANE's design philosophy, background, or expertise.</span></p>
+                  <div class="flex flex-col md:flex-row gap-4">
+                    <input id="ai-input" type="text" placeholder="提问 / Ask a question..." class="flex-1 bg-black/40 border border-white/10 rounded-2xl px-6 py-4 text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-purple-500/50 transition-colors interactable" />
+                    <button id="ai-btn" onclick="handleAIQuery()" class="interactable bg-white text-black px-8 py-4 rounded-2xl font-medium hover:bg-zinc-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 min-w-[140px]"><i data-lucide="message-square" class="w-4 h-4"></i> 发送 / Send</button>
+                  </div>
+                  <div id="ai-response" class="mt-8 p-6 rounded-2xl bg-black/30 border border-white/5 text-zinc-300 font-light leading-relaxed animate-fadeIn hidden whitespace-pre-wrap"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderAllProjects() {
+      const container = document.getElementById('view-projects');
+      const listHTML = PROJECTS.map((p) => `
+        <div onclick="navigate('detail', ${p.id})" class="group cursor-pointer interactable flex flex-col gap-6 md:mb-32 ${p.layoutClass || 'md:col-span-6'}">
+          <div class="relative w-full rounded-2xl md:rounded-[2rem] overflow-hidden border border-white/5 shadow-2xl transition-all duration-700 group-hover:scale-[1.02] group-hover:shadow-[0_20px_60px_rgba(0,0,0,0.5)]">
+            ${p.image ? `<img src="${p.image}" alt="${p.title}" class="w-full h-auto block object-cover relative z-10 transition-transform duration-1000 group-hover:scale-105" />` : `<div class="w-full aspect-video ${p.gradient} transition-transform duration-1000 group-hover:scale-105"></div>`}
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-20"></div>
+          </div>
+          <div class="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
+            <div class="max-w-xl">
+              <span class="text-zinc-500 text-xs tracking-[0.2em] mb-2 block uppercase">${p.categoryEn} · ${p.year}</span>
+              <h3 class="text-3xl font-medium text-zinc-100 group-hover:text-white transition-colors mb-1">${p.title}</h3>
+              <h4 class="text-base font-serif italic text-zinc-500 mb-4">${p.titleEn}</h4>
+            </div>
+            <div class="hidden md:flex w-12 h-12 rounded-full border border-white/10 items-center justify-center group-hover:bg-white/10 transition-colors shrink-0 mt-2">
+               <i data-lucide="arrow-right" class="w-4 h-4 text-zinc-500 group-hover:text-white transition-colors transform group-hover:-rotate-45"></i>
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="w-full relative z-10 pt-32 pb-24 px-6 md:px-24 min-h-screen animate-fadeIn">
+          <button onclick="navigate('home')" class="interactable flex items-center gap-3 text-zinc-500 hover:text-white transition-colors mb-20 group"><i data-lucide="arrow-left" class="w-5 h-5 group-hover:-translate-x-1 transition-transform"></i><div class="flex flex-col text-left"><span class="text-sm tracking-widest uppercase">返回主页</span><span class="text-[10px] text-zinc-600 uppercase">Back to Home</span></div></button>
+          <div id="projects-title" class="mb-24">
+            <h1 class="text-5xl md:text-7xl font-medium text-zinc-100 mb-2 tracking-tight">项目归档</h1>
+            <h2 class="text-2xl md:text-4xl text-zinc-500 font-serif italic mb-6">Project Archive</h2>
+            <p class="text-zinc-300 font-light max-w-xl text-base">汇集了在空间设计、视觉策展与交互原型维度的精选实践。<span class="block text-sm text-zinc-500 mt-2">A curated collection of work in spatial design, visual curation, and interactive prototyping.</span></p>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-x-8 gap-y-24 md:gap-y-0 items-start">
+            ${listHTML}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderExhibition() {
+      const container = document.getElementById('view-exhibition');
+      const listHTML = EXHIBITIONS.map((e, idx) => `
+        <div onclick="navigate('exhibition-detail')" class="group flex flex-col md:flex-row items-center gap-8 md:gap-16 border-b border-white/5 pb-20 last:border-0 interactable cursor-pointer">
+          <div class="w-full md:w-1/2 relative aspect-video md:aspect-[4/3] rounded-[2rem] overflow-hidden bg-zinc-900 border border-white/10 shadow-2xl flex items-center justify-center p-4">
+            <img src="${e.image}" alt="${e.title}" class="absolute inset-0 w-full h-full object-cover opacity-40 blur-xl scale-110 pointer-events-none" />
+            <img src="${e.image}" alt="${e.title}" class="w-full h-full object-contain relative z-10 transition-transform duration-700 group-hover:scale-[1.02]" />
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-20"></div>
+          </div>
+          <div class="w-full md:w-1/2 flex flex-col gap-4">
+            <span class="text-zinc-700 text-6xl font-serif italic font-light mb-4 transition-colors duration-500 group-hover:text-zinc-500">0${idx + 1}</span>
+            <h4 class="text-2xl md:text-3xl font-medium text-zinc-100 group-hover:text-white transition-colors leading-snug">${e.title}</h4>
+            <h5 class="text-sm md:text-base font-serif italic text-zinc-500 leading-relaxed mt-2">${e.titleEn}</h5>
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div class="w-full relative z-10 bg-transparent animate-fadeIn">
+          <div class="fixed top-24 md:top-32 left-6 md:left-24 z-50">
+            <button onclick="navigate('home')" class="interactable flex items-center gap-3 text-zinc-400 hover:text-white transition-colors group bg-black/20 px-4 py-2 rounded-full backdrop-blur-md border border-white/5"><i data-lucide="arrow-left" class="w-4 h-4 group-hover:-translate-x-1 transition-transform"></i><div class="flex flex-col text-left"><span class="text-xs tracking-widest uppercase">返回主页</span></div></button>
+          </div>
+          <div class="h-screen w-full flex flex-col items-center justify-center sticky top-0 z-0 px-6 text-center">
+            <div id="exhib-hero-text" class="space-y-6">
+              <p class="text-lg md:text-xl font-light text-zinc-300 tracking-widest">不要为你自己喜欢而设计，要为客户需要而设计。</p>
+              <p class="text-xs md:text-sm font-serif italic text-zinc-500 tracking-[0.2em] uppercase">Don't design what you like for your customers; design what they need.</p>
+            </div>
+          </div>
+          <div class="relative z-10 bg-zinc-950/90 backdrop-blur-2xl pt-40 pb-32 px-6 md:px-24 shadow-[0_-20px_60px_rgba(0,0,0,0.8)] border-t border-white/5 mt-[100vh]">
+            <div class="max-w-6xl mx-auto">
+              <div class="mb-24">
+                <h2 class="text-4xl md:text-6xl font-medium text-zinc-100 mb-2 tracking-tight">实体展览</h2>
+                <h3 class="text-xl md:text-2xl text-zinc-500 font-serif italic mb-6">Exhibition Archive</h3>
+                <div class="w-12 h-px bg-zinc-700"></div>
+              </div>
+              <div class="space-y-20 md:space-y-32">
+                ${listHTML}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderExhibitionDetail() {
+      const container = document.getElementById('view-exhibition-detail');
+      
+      let blocksHTML = '';
+      EXHIBITIONS.forEach((e) => {
+        let block = '';
+        if (e.id === 1) {
+          block = `
+            <div class="flex flex-col gap-6 md:gap-8 mb-40">
+              <div class="text-center max-w-3xl mx-auto mb-16"><h3 class="text-3xl md:text-5xl font-serif text-zinc-100 uppercase tracking-tighter mb-2">${e.titleEn}</h3><h4 class="text-xl font-medium text-zinc-400 mb-6">${e.title}</h4><div class="w-px h-16 bg-zinc-700 mx-auto mb-6"></div><p class="text-sm text-zinc-300 font-light leading-relaxed mb-2">${e.processText}</p><p class="text-xs text-zinc-500 font-light leading-relaxed">${e.processTextEn}</p></div>
+              <div class="flex flex-col gap-4 md:gap-6">
+                ${Frame(`<img src="${e.image}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
+                  <div class="md:col-span-8 flex flex-col gap-4 md:gap-6 w-full">
+                     ${Frame(`<img src="${e.gallery[0]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                       ${Frame(`<img src="${e.gallery[1]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                       ${Frame(`<img src="${e.gallery[2]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                     </div>
+                  </div>
+                  <div class="md:col-span-4 w-full">${Frame(`<img src="${e.gallery[3]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}</div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
+                  <div class="md:col-span-5 w-full">${Frame(`<img src="${e.gallery[4]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}</div>
+                  <div class="md:col-span-7 w-full">${Frame(`<img src="${e.gallery[5]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}</div>
+                </div>
+                <div class="grid grid-cols-1 mt-4 items-start">${Frame(`<img src="${e.gallery[6]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:w-3/4 mx-auto")}</div>
+              </div>
+            </div>
+          `;
+        } else if (e.id === 2) {
+           block = `
+            <div class="flex flex-col gap-6 md:gap-8 mb-40">
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-12 items-start">
+                <div class="md:col-span-5 order-2 md:order-1 bg-white/5 p-8 md:p-12 border border-white/10 md:sticky md:top-32"><h3 class="text-3xl md:text-4xl font-serif text-zinc-100 uppercase tracking-tighter leading-tight mb-2">${e.titleEn}</h3><h4 class="text-xl font-medium text-zinc-400 mb-8">${e.title}</h4><div class="w-12 h-px bg-zinc-600 mb-8"></div><p class="text-sm text-zinc-300 font-light leading-relaxed mb-4">${e.processText}</p><p class="text-xs text-zinc-500 font-light leading-relaxed">${e.processTextEn}</p></div>
+                <div class="md:col-span-7 order-1 md:order-2 flex flex-col gap-4 md:gap-6 w-full">
+                  ${Frame(`<img src="${e.image}" class="w-full h-auto block grayscale hover:grayscale-0 transition-all duration-1000 group-hover:scale-105" />`, "w-full")}
+                  ${Frame(`<img src="${e.gallery[0]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 mt-4 items-start">
+                 ${Frame(`<img src="${e.gallery[1]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "md:col-span-5 w-full")}
+                 ${Frame(`<img src="${e.gallery[2]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "md:col-span-7 w-full")}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 items-start">
+                 ${Frame(`<img src="${e.gallery[3]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                 ${Frame(`<img src="${e.gallery[4]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:mt-16")}
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 mt-4 items-start">
+                 ${Frame(`<img src="${e.gallery[5]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "md:col-span-7 w-full")}
+                 <div class="md:col-span-5 flex flex-col gap-4 md:gap-6 w-full">
+                     ${Frame(`<img src="${e.gallery[6]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                     ${Frame(`<img src="${e.gallery[7]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                 </div>
+              </div>
+            </div>
+           `;
+        } else if (e.id === 3) {
+           block = `
+            <div class="flex flex-col gap-6 md:gap-8 mb-40">
+              <div class="text-center max-w-3xl mx-auto mb-16"><h3 class="text-3xl md:text-5xl font-serif text-zinc-100 uppercase tracking-tighter mb-2">${e.titleEn}</h3><h4 class="text-xl font-medium text-zinc-400 mb-6">${e.title}</h4><div class="w-px h-16 bg-zinc-700 mx-auto mb-6"></div><p class="text-sm text-zinc-300 font-light leading-relaxed mb-2">${e.processText}</p><p class="text-xs text-zinc-500 font-light leading-relaxed">${e.processTextEn}</p></div>
+              <div class="flex flex-col gap-4 md:gap-6">
+                ${Frame(`<img src="${e.gallery[1]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start">
+                  <div class="md:col-span-5 w-full">${Frame(`<img src="${e.gallery[0]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}</div>
+                  <div class="md:col-span-7 flex flex-col gap-4 md:gap-6 w-full">
+                    ${Frame(`<img src="${e.gallery[2]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                    ${Frame(`<img src="${e.gallery[3]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+                  ${Frame(`<img src="${e.gallery[4]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  ${Frame(`<img src="${e.gallery[6]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full bg-zinc-900/50")}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+                  ${Frame(`<img src="${e.gallery[7]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  ${Frame(`<img src="${e.gallery[8]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                </div>
+                <div class="grid grid-cols-1 mt-4 items-start">${Frame(`<img src="${e.gallery[5]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:w-2/3 mx-auto")}</div>
+              </div>
+            </div>
+           `;
+        } else if (e.id === 4) {
+           block = `
+            <div class="flex flex-col gap-6 md:gap-8 mb-40">
+              <div class="flex flex-col md:flex-row gap-8 md:gap-12 items-start mb-8">
+                <div class="md:w-1/3 md:sticky md:top-32 border-l-2 border-white/20 pl-6 md:pl-8"><h3 class="text-3xl md:text-5xl font-serif text-zinc-100 uppercase tracking-tighter mb-4 leading-none">${e.titleEn}</h3><h4 class="text-xl font-medium text-zinc-400 mb-8">${e.title}</h4><p class="text-sm text-zinc-300 font-light leading-relaxed mb-4">${e.processText}</p><p class="text-xs text-zinc-500 font-light leading-relaxed">${e.processTextEn}</p></div>
+                <div class="md:w-2/3 flex flex-col gap-4 md:gap-6">
+                  ${Frame(`<img src="${e.image}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+                     ${Frame(`<img src="${e.gallery[0]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:mt-16")}
+                     ${Frame(`<img src="${e.gallery[1]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  </div>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start mt-4">
+                <div class="md:col-span-8 w-full">${Frame(`<img src="${e.gallery[2]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}</div>
+                <div class="md:col-span-4 flex flex-col gap-4 md:gap-6 w-full md:mt-24">
+                  ${Frame(`<img src="${e.gallery[3]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  ${Frame(`<img src="${e.gallery[4]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 items-start mt-4">
+                ${Frame(`<img src="${e.gallery[5]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:col-span-1 md:mt-12")}
+                ${Frame(`<img src="${e.gallery[6]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:col-span-2")}
+              </div>
+              <div class="w-full mt-4 items-start">${Frame(`<img src="${e.gallery[7]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:w-3/4 ml-auto")}</div>
+            </div>
+           `;
+        } else if (e.id === 5) {
+           block = `
+            <div class="flex flex-col gap-6 md:gap-8 mb-40">
+              <div class="flex flex-col md:flex-row gap-8 md:gap-12 items-start mb-12">
+                <div class="md:w-1/3 md:sticky md:top-32"><h3 class="text-3xl md:text-5xl font-serif text-zinc-100 uppercase tracking-tighter mb-4 leading-none">${e.titleEn}</h3><h4 class="text-xl font-medium text-zinc-400 mb-8">${e.title}</h4><div class="w-12 h-px bg-zinc-600 mb-8"></div><p class="text-sm text-zinc-300 font-light leading-relaxed mb-4">${e.processText}</p><p class="text-xs text-zinc-500 font-light leading-relaxed">${e.processTextEn}</p></div>
+                <div class="md:w-2/3 flex flex-col gap-4 md:gap-6">
+                  ${Frame(`<img src="${e.image}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 items-start">
+                     ${Frame(`<img src="${e.gallery[0]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:mt-12")}
+                     ${Frame(`<img src="${e.gallery[1]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  </div>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6 items-start mt-4">
+                <div class="md:col-span-5 flex flex-col gap-4 md:gap-6 w-full">
+                  ${Frame(`<img src="${e.gallery[2]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  ${Frame(`<img src="${e.gallery[3]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                </div>
+                <div class="md:col-span-7 flex flex-col gap-4 md:gap-6 w-full md:mt-20">
+                  ${Frame(`<img src="${e.gallery[4]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full")}
+                  ${Frame(`<img src="${e.gallery[5]}" class="w-full h-auto block transition-transform duration-1000 group-hover:scale-105" />`, "w-full md:w-3/4 ml-auto")}
+                </div>
+              </div>
+            </div>
+           `;
+        }
+        blocksHTML += block;
+      });
+
+      container.innerHTML = `
+        <div class="w-full relative z-10 pt-32 pb-24 px-6 md:px-24 min-h-screen animate-fadeIn">
+          <div class="flex justify-between items-center mb-16">
+            <button onclick="navigate('exhibition')" class="interactable flex items-center gap-3 text-zinc-500 hover:text-white transition-colors group"><i data-lucide="arrow-left" class="w-5 h-5 group-hover:-translate-x-1 transition-transform"></i><div class="flex flex-col text-left"><span class="text-sm tracking-widest uppercase">返回展览归档</span><span class="text-[10px] text-zinc-600 uppercase">Back to Archive</span></div></button>
+          </div>
+          <div id="exhib-det-title" class="mb-32">
+            <h1 class="text-5xl md:text-7xl font-medium text-zinc-100 mb-2 leading-[1.1] tracking-tighter">实施与布展过程</h1>
+            <h2 class="text-2xl md:text-4xl font-serif italic text-zinc-500 tracking-tighter mb-8">Implementation & Installation Process</h2>
+            <div class="w-12 h-px bg-zinc-700 mb-8"></div>
+            <p class="text-zinc-300 font-light max-w-2xl text-base leading-relaxed">统一记录各项实体展览的空间转化与施工执行阶段。系统化呈现空间边界确立、物理媒介部署与视觉导视矩阵落地的客观流程。<span class="block text-sm text-zinc-500 mt-2">A unified record of the spatial transformation and construction execution phases for all physical exhibitions. Systematically presenting the objective processes of establishing spatial boundaries, deploying physical media, and implementing visual wayfinding matrices.</span></p>
+          </div>
+          <div class="space-y-40 max-w-7xl mx-auto">
+            ${blocksHTML}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProjectDetail(id) {
+      const container = document.getElementById('view-detail');
+      const pIndex = PROJECTS.findIndex(p => p.id === id);
+      const p = PROJECTS[pIndex] || PROJECTS[0];
+      const nP = PROJECTS[(pIndex + 1) % PROJECTS.length];
+
+      window.currentProjectContext = p; // Store globally for AI
+
+      let sectionsHTML = '';
+      if (p.detailedSections) {
+        sectionsHTML = p.detailedSections.map(sec => {
+          let innerContent = '';
+          if (sec.title) {
+            innerContent += `
+              <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+                <div class="md:col-span-4"><h3 class="text-2xl md:text-3xl font-medium text-zinc-100 mb-2">${sec.title}</h3><h4 class="text-sm md:text-base font-serif italic text-zinc-500">${sec.titleEn}</h4></div>
+                <div class="md:col-span-8 space-y-4"><p class="text-zinc-300 font-light leading-relaxed text-base md:text-lg">${sec.text}</p><p class="text-zinc-500 font-light leading-relaxed text-sm md:text-base">${sec.textEn}</p></div>
+              </div>
+            `;
+          }
+          if (sec.images && sec.images.length > 0) {
+            let gridCls = sec.customGrid || (sec.images.length === 2 ? 'md:grid-cols-2 items-start' : sec.images.length === 3 ? 'md:grid-cols-3 items-start' : 'items-start');
+            let alignCls = sec.alignItems || '';
+            let imgHTML = sec.images.map((img, i) => {
+              const sClass = sec.imageClasses ? sec.imageClasses[i] : '';
+              const frameClass = `relative w-full overflow-hidden flex items-center justify-center interactable group ${sec.noPadding ? '' : 'p-4 md:p-6 bg-zinc-900/30 rounded-2xl md:rounded-[2rem] border border-white/5'} ${sec.imageContainerClass || 'h-fit'} ${sClass}`;
+              return `<div class="${frameClass}">
+                ${!sec.noPadding ? `<img src="${img}" class="absolute inset-0 w-full h-full object-cover opacity-30 blur-2xl scale-110 pointer-events-none" />` : ''}
+                <img src="${img}" class="relative z-10 w-full block h-auto ${sec.noPadding ? 'rounded-none' : 'rounded-lg'} transition-transform duration-700 group-hover:scale-[1.02] drop-shadow-2xl" />
+              </div>`;
+            }).join('');
+            innerContent += `<div class="grid grid-cols-1 ${gridCls} gap-6 md:gap-8 mt-12 ${alignCls}">${imgHTML}</div>`;
+          }
+          if (sec.videos && sec.videos.length > 0) {
+            let gridCls = sec.customGrid || 'items-start';
+            let alignCls = sec.alignItems || '';
+            let vidHTML = sec.videos.map((vid, i) => {
+              const sClass = sec.itemClasses ? sec.itemClasses[i] : '';
+              const frameClass = `relative w-full overflow-hidden flex items-center justify-center interactable group ${sec.noPadding ? '' : 'p-4 md:p-6 bg-zinc-900/30 rounded-2xl md:rounded-[2rem] border border-white/5'} ${sec.mediaContainerClass || 'h-fit'} ${sClass}`;
+              return `<div class="${frameClass}"><video src="${vid}" controls playsInline class="relative z-10 w-full h-auto block ${sec.noPadding ? 'rounded-none object-cover' : 'object-contain rounded-lg bg-black/50'} transition-transform duration-700 group-hover:scale-[1.02] drop-shadow-2xl"></video></div>`;
+            }).join('');
+            innerContent += `<div class="grid grid-cols-1 ${gridCls} gap-6 md:gap-8 mt-12 ${alignCls}">${vidHTML}</div>`;
+          }
+          return `<div class="space-y-8 border-t border-white/10 pt-16 mt-16 first:border-0 first:pt-0 first:mt-0">${innerContent}</div>`;
+        }).join('');
+      } else {
+         sectionsHTML = `<div class="space-y-16 mt-16 pt-16 border-t border-white/10"><div class="relative w-full aspect-[21/9] rounded-3xl overflow-hidden interactable group border border-white/5 bg-zinc-950 flex items-center justify-center p-4"><div class="absolute inset-0 opacity-80 ${p.gradient} transition-transform duration-1000 group-hover:scale-105"></div><div class="absolute inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-none z-20"></div><div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-30"><span class="text-white/60 tracking-[0.3em] text-sm font-light">项目概览</span><span class="text-white/30 tracking-[0.3em] text-[10px] uppercase font-light mt-1">Project Overview</span></div></div></div>`;
+      }
+
+      container.innerHTML = `
+        <div class="w-full relative z-10 pt-32 pb-0 px-6 md:px-24 min-h-screen animate-fadeIn">
+          <div class="flex justify-between items-center mb-16">
+            <button onclick="navigate('projects')" class="interactable flex items-center gap-3 text-zinc-500 hover:text-white transition-colors group"><i data-lucide="arrow-left" class="w-5 h-5 group-hover:-translate-x-1 transition-transform"></i><div class="flex flex-col text-left"><span class="text-sm tracking-widest uppercase">返回归档</span><span class="text-[10px] text-zinc-600 uppercase">Back to Archive</span></div></button>
+          </div>
+          <div id="det-header" class="mb-20">
+            <h1 class="text-5xl md:text-8xl font-medium text-zinc-100 mb-2 leading-[1.1] tracking-tighter max-w-5xl">${p.title}</h1>
+            <h2 class="text-3xl md:text-5xl font-serif italic text-zinc-500 tracking-tighter mb-12">${p.titleEn}</h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-12 pt-12 border-t border-white/10">
+              <div class="flex flex-col gap-1"><span class="text-zinc-400 text-xs tracking-[0.2em] font-medium">性质</span><span class="text-zinc-600 text-[10px] uppercase tracking-widest mb-1">Nature</span><span class="text-zinc-200 text-lg">${p.nature || "独立项目"}</span></div>
+              <div class="flex flex-col gap-1"><span class="text-zinc-400 text-xs tracking-[0.2em] font-medium">角色</span><span class="text-zinc-600 text-[10px] uppercase tracking-widest mb-1">Role</span><span class="text-zinc-200 text-lg">${p.role}</span></div>
+              <div class="flex flex-col gap-1"><span class="text-zinc-400 text-xs tracking-[0.2em] font-medium">类别</span><span class="text-zinc-600 text-[10px] uppercase tracking-widest mb-1">Category</span><span class="text-zinc-200 text-lg">${p.category}</span></div>
+              <div class="flex flex-col gap-1"><span class="text-zinc-400 text-xs tracking-[0.2em] font-medium">年份</span><span class="text-zinc-600 text-[10px] uppercase tracking-widest mb-1">Year</span><span class="text-zinc-200 text-lg">${p.year}</span></div>
+            </div>
+          </div>
+          
+          <div class="relative w-full ${p.heroLayout === 'auto' ? 'aspect-auto rounded-none md:rounded-[2rem]' : 'h-[60vh] md:h-[80vh] rounded-[2rem]'} overflow-hidden mb-32 border border-white/10 shadow-2xl interactable group bg-zinc-950 flex items-center justify-center ${p.heroLayout === 'auto' ? '' : 'p-4 md:p-12'}">
+            ${p.heroLayout === 'auto' ? `<img src="${p.image}" class="w-full h-auto block relative z-10 transition-transform duration-1000 group-hover:scale-105" />` : `
+              ${p.image ? `<img src="${p.image}" class="absolute inset-0 w-full h-full object-cover opacity-40 blur-3xl scale-110 pointer-events-none" /> <img src="${p.image}" class="w-full h-auto block relative z-10 transition-transform duration-1000 group-hover:scale-105" />` : `<div class="absolute inset-0 opacity-90 ${p.gradient} transition-transform duration-1000 group-hover:scale-105"></div>`}
+            `}
+            <div class="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/60 pointer-events-none z-20"></div>
+            <div class="absolute bottom-12 right-12 mix-blend-overlay pointer-events-none text-right z-30"><span class="text-white/80 text-sm tracking-widest block">主视觉</span><span class="text-white/50 text-[10px] tracking-widest uppercase">Hero Image</span></div>
+          </div>
+
+          <div class="max-w-7xl mx-auto space-y-32">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8 items-start">
+              <div class="md:col-span-4 space-y-8">
+                <div><h2 class="text-2xl md:text-3xl font-medium text-zinc-100 tracking-tight">项目概述</h2><h3 class="text-lg md:text-xl font-serif italic text-zinc-500 mt-1">Project Overview</h3></div>
+                <div class="pt-8 border-t border-white/10">
+                  <button id="ai-insight-btn" onclick="generateInsight()" class="interactable group flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"><i data-lucide="sparkles" class="w-4 h-4 text-blue-400"></i><span id="ai-insight-text" class="text-sm font-medium tracking-wide text-zinc-300 group-hover:text-white transition-colors">生成 AI 深度解析 / Generate AI Insight</span></button>
+                  <div id="ai-insight-res" class="hidden mt-6 p-6 rounded-2xl bg-gradient-to-br from-blue-900/10 to-purple-900/10 border border-white/10 backdrop-blur-md shadow-xl relative overflow-hidden"><div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-[40px]"></div><p id="ai-insight-content" class="text-zinc-300 font-light leading-relaxed relative z-10 whitespace-pre-wrap"></p></div>
+                </div>
+              </div>
+              <div class="md:col-span-8 space-y-4"><p class="text-xl md:text-2xl leading-relaxed font-light text-zinc-200">${p.content}</p><p class="text-lg md:text-xl leading-relaxed font-light text-zinc-500">${p.contentEn}</p></div>
+            </div>
+            ${sectionsHTML}
+          </div>
+
+          <div class="mt-40 border-t border-white/10 relative overflow-hidden bg-zinc-950/50 backdrop-blur-md">
+            <div class="absolute inset-0 bg-gradient-to-t from-white/5 to-transparent pointer-events-none"></div>
+            <div class="px-6 md:px-24 py-24 flex flex-col items-center justify-center relative z-10 text-center">
+              <p class="text-zinc-400 uppercase tracking-widest text-sm mb-1">下一个项目</p><p class="text-zinc-600 uppercase tracking-widest text-[10px] mb-6">Next Project</p>
+              <button onclick="navigate('detail', ${nP.id})" class="interactable group flex flex-col items-center gap-4">
+                <div class="flex items-center gap-6"><h2 class="text-4xl md:text-7xl font-medium text-zinc-200 group-hover:text-white transition-colors duration-500">${nP.title}</h2><div class="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 group-hover:scale-110 transition-all duration-500"><i data-lucide="chevron-right" class="w-8 h-8 text-zinc-400 group-hover:text-white"></i></div></div>
+                <h3 class="text-xl md:text-3xl font-serif italic text-zinc-600 group-hover:text-zinc-400 transition-colors duration-500">${nP.titleEn}</h3>
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // --- Gemini API Logic (Vanilla JS) ---
+    const API_KEY = "";
+    
+    async function generateContentWithRetry(userPrompt, systemPrompt) {
+      if(!API_KEY) return "系统由于安全限制，暂无法调用接口。 / API key missing.";
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`;
+      const payload = {
+        contents: [{ parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] }
+      };
+      const delays = [1000, 2000, 4000, 8000, 16000];
+      for (let attempt = 0; attempt < 5; attempt++) {
+        try {
+          const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+          const data = await response.json();
+          return data.candidates?.[0]?.content?.parts?.[0]?.text || "系统暂无响应。";
+        } catch (error) {
+          if (attempt === 4) return "网络波动，请稍后再试。 / Network error, please try again.";
+          await new Promise(r => setTimeout(r, delays[attempt]));
+        }
+      }
+    }
+
+    window.handleAIQuery = async function() {
+      const input = document.getElementById('ai-input');
+      const btn = document.getElementById('ai-btn');
+      const resDiv = document.getElementById('ai-response');
+      const val = input.value.trim();
+      if(!val) return;
+      
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> 发送中...`;
+      lucide.createIcons();
+      resDiv.classList.add('hidden');
+      
+      const sysP = `你现在是 ZANE (王梓涵) 个人作品集的“虚拟 AI 策展人”。ZANE 是一位空间设计师和艺术教师，具有以下背景：理念：在广袤的世界版图里，构建独属于我的视觉坐标。学历：马来西亚理科大学创意产业设计硕士。经历：在柒森会展担任展厅设计师。请以专业、绝对客观、理性且简洁精炼的双语（中英）回答。不要有迎合或者主观称赞的表述。`;
+      
+      const ans = await generateContentWithRetry(val, sysP);
+      resDiv.innerHTML = ans;
+      resDiv.classList.remove('hidden');
+      
+      btn.disabled = false;
+      btn.innerHTML = `<i data-lucide="message-square" class="w-4 h-4"></i> 发送 / Send`;
+      lucide.createIcons();
+    };
+
+    window.generateInsight = async function() {
+      const btn = document.getElementById('ai-insight-btn');
+      const textSpan = document.getElementById('ai-insight-text');
+      const resDiv = document.getElementById('ai-insight-res');
+      const contentP = document.getElementById('ai-insight-content');
+      
+      if(btn.disabled) return;
+      btn.disabled = true;
+      textSpan.innerText = '分析中 / Analyzing...';
+      
+      const p = window.currentProjectContext;
+      const prompt = `项目名称：${p.title}\n类别：${p.category}\n描述：${p.description}\n详情：${p.content}`;
+      const sysP = `你是一个高级数字艺术评论家。请根据项目信息，生成一段简短、具美学深度的“AI 策展人点评”（约100字）。提取核心设计价值，内容需绝对客观、理性。用中英双语输出。`;
+      
+      const ans = await generateContentWithRetry(prompt, sysP);
+      contentP.innerText = ans;
+      resDiv.classList.remove('hidden');
+      textSpan.innerText = 'AI 分析完毕 / AI Insight Ready';
+    };
+
+    // --- Initialization & Event Listeners ---
+    function initApp() {
+      // 1. Initial view setup
+      navigate('home');
+      
+      // 2. Smooth Mouse
+      const dot = document.getElementById('custom-cursor-dot');
+      const circle = document.getElementById('custom-cursor-circle');
+      let mouseX = window.innerWidth / 2, mouseY = window.innerHeight / 2;
+      let circleX = mouseX, circleY = mouseY;
+      
+      window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX; mouseY = e.clientY;
+        dot.style.transform = `translate3d(${mouseX}px, ${mouseY}px, 0)`;
+        
+        const isInteractable = e.target.closest('a') || e.target.closest('button') || e.target.closest('.interactable');
+        if(isInteractable) document.body.classList.add('cursor-hover');
+        else document.body.classList.remove('cursor-hover');
+      });
+      
+      function renderCursor() {
+        circleX += (mouseX - circleX) * 0.15;
+        circleY += (mouseY - circleY) * 0.15;
+        // Keep scale/opacity modifications in CSS class handling, just update pos here
+        const isHover = document.body.classList.contains('cursor-hover');
+        circle.style.transform = `translate3d(${circleX}px, ${circleY}px, 0) scale(${isHover ? 1.8 : 1})`;
+        requestAnimationFrame(renderCursor);
+      }
+      requestAnimationFrame(renderCursor);
+
+      // 3. Background Canvas Animation
+      const canvas = document.getElementById('bg-canvas');
+      const ctx = canvas.getContext('2d');
+      let time = 0;
+      let width, height;
+      
+      function resizeCanvas() {
+        width = window.innerWidth; height = window.innerHeight;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr; canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+      }
+      window.addEventListener('resize', resizeCanvas);
+      resizeCanvas();
+
+      function drawOrb(cx, cy, r, color) {
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grad.addColorStop(0, color); grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+      }
+
+      function drawCanvas() {
+        time += 0.002;
+        ctx.fillStyle = '#09090b'; ctx.fillRect(0, 0, width, height);
+        
+        const scrollOffset = currentScrollY * 0.15;
+        const cx = width / 2, cy = height / 2 - scrollOffset;
+
+        ctx.globalCompositeOperation = 'screen';
+        drawOrb(cx + Math.sin(time) * width * 0.3, cy + Math.cos(time * 0.8) * height * 0.3, width * 0.4, 'rgba(124, 58, 237, 0.15)'); 
+        drawOrb(cx - Math.sin(time * 1.2) * width * 0.4, cy - Math.cos(time * 0.9) * height * 0.2, width * 0.5, 'rgba(56, 189, 248, 0.1)'); 
+        drawOrb(cx + Math.cos(time * 0.7) * width * 0.2, cy + Math.sin(time * 1.1) * height * 0.4, width * 0.3, 'rgba(255, 255, 255, 0.05)'); 
+
+        ctx.globalCompositeOperation = 'source-over';
+        const numLines = 70; 
+        for(let i = 0; i < numLines; i++) {
+          ctx.beginPath();
+          const progress = i / numLines; 
+          const lineGrad = ctx.createLinearGradient(0, 0, width, 0);
+          lineGrad.addColorStop(0, `rgba(255, 255, 255, 0)`);
+          lineGrad.addColorStop(0.5, `rgba(255, 255, 255, ${0.02 + Math.sin(progress * Math.PI) * 0.2})`);
+          lineGrad.addColorStop(1, `rgba(255, 255, 255, 0)`);
+          ctx.strokeStyle = lineGrad;
+          ctx.lineWidth = 0.5 + Math.sin(progress * Math.PI) * 1.5; 
+          const baseY = cy + (progress - 0.5) * height * 0.8; 
+          for(let x = 0; x <= width; x += 15) {
+            const xProgress = x / width; 
+            const wave1 = Math.sin(xProgress * 4 + time * 3 + progress * 5) * (80 + Math.sin(time) * 20);
+            const wave2 = Math.cos(xProgress * 3 - time * 2 + progress * 3) * 60;
+            const wave3 = Math.sin(xProgress * 8 + time + progress * 2) * 20;
+            const envelope = Math.sin(xProgress * Math.PI) * Math.sin(progress * Math.PI);
+            const y = baseY + (wave1 + wave2 + wave3) * envelope;
+            if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        requestAnimationFrame(drawCanvas);
+      }
+      requestAnimationFrame(drawCanvas);
+
+      // 4. Scroll Parallax Logic
+      window.addEventListener('scroll', () => {
+        currentScrollY = window.scrollY;
+        
+        // Manual updates for parallax targets
+        const homeContent = document.getElementById('home-hero-content');
+        if(homeContent) {
+           homeContent.style.transform = `translate3d(0, ${currentScrollY * 0.2}px, 0)`;
+           homeContent.style.opacity = Math.max(0, 1 - currentScrollY * 0.003);
+        }
+        
+        const aboutTitle = document.getElementById('about-title');
+        const aboutImg = document.getElementById('about-hero-img');
+        if(aboutTitle) aboutTitle.style.transform = `translate3d(0, ${currentScrollY * 0.05}px, 0)`;
+        if(aboutImg) aboutImg.style.transform = `translate3d(0, ${currentScrollY * 0.1}px, 0) scale(1.05)`;
+
+        const projTitle = document.getElementById('projects-title');
+        if(projTitle) projTitle.style.transform = `translate3d(0, ${currentScrollY * 0.1}px, 0)`;
+
+        const exText = document.getElementById('exhib-hero-text');
+        if(exText) exText.style.opacity = Math.max(0, 1 - currentScrollY * 0.003);
+
+        const detHead = document.getElementById('det-header');
+        if(detHead) detHead.style.transform = `translate3d(0, ${currentScrollY * 0.15}px, 0)`;
+        
+        const exhibDetHead = document.getElementById('exhib-det-title');
+        if(exhibDetHead) exhibDetHead.style.transform = `translate3d(0, ${currentScrollY * 0.15}px, 0)`;
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", initApp);
+  </script>
+</body>
+</html>
